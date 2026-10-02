@@ -12,8 +12,33 @@ spec:
     - sleep
     args:
     - infinity
+  - name: buildah
+    image: quay.io/buildah/stable:v1
+    command:
+    - sleep
+    args:
+    - infinity
+    securityContext:
+      privileged: true
+    volumeMounts:
+    - name: registry-credentials
+      mountPath: /root/.docker
+  volumes:
+  - name: registry-credentials
+    secret:
+      secretName: docker-hub-credential
+      items:
+      - key: .dockerconfigjson
+        path: config.json
 '''
         }
+    }
+    environment {
+        REGISTRY    = 'docker.io'
+        USERNAME    = 'myusername'
+        IMAGE_NAME  = 'myapp'
+        DOCKERFILE  = 'Dockerfile'
+        IMAGE_TAG   = "${REGISTRY}/${USERNAME}/${IMAGE_NAME}"
     }
     stages {
         stage('Checkout') {
@@ -30,13 +55,33 @@ spec:
                 }
             }
         }
-	stage('Build Application') {
+        stage('Build Application') {
             steps {
                 container('maven') {
                     sh 'mvn clean package -DskipTests'
                 }
             }
         }
+        stage('Build Container Image') {
+            steps {
+                container('buildah') {
+                    sh """
+                        buildah build -f ${DOCKERFILE} \
+                          -t ${IMAGE_TAG}:${BUILD_NUMBER} \
+                          -t ${IMAGE_TAG}:latest .
+                    """
+                }
+            }
+        }
+        stage('Push Container Image') {
+            steps {
+                container('buildah') {
+                    sh """
+                        buildah push --authfile /root/.docker/config.json ${IMAGE_TAG}:${BUILD_NUMBER}
+                        buildah push --authfile /root/.docker/config.json ${IMAGE_TAG}:latest
+                    """
+                }
+            }
+        }
     }
 }
-
