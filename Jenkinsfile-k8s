@@ -1,34 +1,34 @@
 pipeline {
-  agent {
-    kubernetes {
-      yaml '''
-        apiVersion: v1
-        kind: Pod
-        spec:
-          containers:
-          - name: maven
-            image: maven:3-eclipse-temurin-21
-            command:
-            - sleep
-            args:
-            - infinity
-      '''
-    }
-  }
-  stages {
-    stage('Checkout') {
-      steps {
-        container('maven')
-          git branch: 'main', url: 'https://github.com/kangyoungsoo-jpg/source-maven-java-spring-hello-webapp.git'
+    agent {
+        kubernetes {
+            yaml '''
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: maven
+    image: maven:3-eclipse-temurin-21
+    command:
+    - sleep
+    args:
+    - infinity
+'''
         }
-      }
     }
-    stage('Test Application') {
-      steps {
-        container('maven') {
-          sh 'mvn test'
+    stages {
+        stage('Checkout') {
+            steps {
+                container('maven') {
+                    git branch: 'main', url: 'https://github.com/kangyoungsoo-jpg/source-maven-java-spring-hello-webapp.git'
+                }
+            }
         }
-      }
+        stage('Test Application') {
+            steps {
+                container('maven') {
+                    sh 'mvn test'
+                }
+            }
+        }
     }
-  }
 }
